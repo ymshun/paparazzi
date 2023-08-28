@@ -91,7 +91,8 @@ class Paparazzi @JvmOverloads constructor(
   private val renderExtensions: Set<RenderExtension> = setOf(),
   private val supportsRtl: Boolean = false,
   private val showSystemUi: Boolean = false,
-  private val validateAccessibility: Boolean = false
+  private val validateAccessibility: Boolean = false,
+  private val imageScaleConfig: ImageScaleConfig = ImageScaleConfig.Original,
 ) : TestRule {
   private val logger = PaparazziLogger()
   private lateinit var renderSession: RenderSessionImpl
@@ -298,10 +299,16 @@ class Paparazzi @JvmOverloads constructor(
           modifiedView.setViewTreeLifecycleOwner(lifecycleOwner)
 
           if (hasSavedStateRegistryOwnerRuntime) {
-            modifiedView.setViewTreeSavedStateRegistryOwner(PaparazziSavedStateRegistryOwner(lifecycleOwner))
+            modifiedView.setViewTreeSavedStateRegistryOwner(
+              PaparazziSavedStateRegistryOwner(
+                lifecycleOwner
+              )
+            )
           }
           if (hasAndroidxActivityRuntime) {
-            modifiedView.setViewTreeOnBackPressedDispatcherOwner(PaparazziOnBackPressedDispatcherOwner(lifecycleOwner))
+            modifiedView.setViewTreeOnBackPressedDispatcherOwner(
+              PaparazziOnBackPressedDispatcherOwner(lifecycleOwner)
+            )
           }
           // Must be changed after the SavedStateRegistryOwner above has finished restoring its state.
           lifecycleOwner.registry.currentState = Lifecycle.State.RESUMED
@@ -408,9 +415,13 @@ class Paparazzi @JvmOverloads constructor(
   }
 
   private fun scaleImage(image: BufferedImage): BufferedImage {
-    val scale = ImageUtils.getThumbnailScale(image)
-    // Only scale images down so we don't waste storage space enlarging smaller layouts.
-    return if (scale < 1f) ImageUtils.scale(image, scale, scale) else image
+    return if (imageScaleConfig is ImageScaleConfig.Limit) {
+      val scale = ImageUtils.getThumbnailScale(image, imageScaleConfig.maxSize)
+      // Only scale images down so we don't waste storage space enlarging smaller layouts.
+      if (scale < 1f) ImageUtils.scale(image, scale, scale) else image
+    } else {
+      image
+    }
   }
 
   private fun validateLayoutAccessibility(view: View, image: BufferedImage? = null) {
