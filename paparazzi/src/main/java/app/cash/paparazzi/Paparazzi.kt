@@ -205,7 +205,11 @@ class Paparazzi @JvmOverloads constructor(
 
   @JvmOverloads
   fun snapshot(view: View, name: String? = null, offsetMillis: Long = 0L) {
-    takeSnapshots(view, name, TimeUnit.MILLISECONDS.toNanos(offsetMillis), -1, 1)
+    if (offsetMillis == 0L) {
+      takeSnapshots(view, name, TimeUnit.MILLISECONDS.toNanos(offsetMillis), -1, 1)
+    } else {
+      takeSnapshots(view, name, TimeUnit.MILLISECONDS.toNanos(offsetMillis), 30, 2, 1)
+    }
   }
 
   @JvmOverloads
@@ -270,7 +274,8 @@ class Paparazzi @JvmOverloads constructor(
     name: String?,
     startNanos: Long,
     fps: Int,
-    frameCount: Int
+    frameCount: Int,
+    skipFrameCount: Int = 0,
   ) {
     val snapshot = Snapshot(name, testName!!, Date())
 
@@ -321,6 +326,10 @@ class Paparazzi @JvmOverloads constructor(
             val result = renderSession.render(true)
             if (result.status == ERROR_UNKNOWN) {
               throw result.exception
+            }
+
+            if (skipFrameCount > frame) {
+              return@withTime
             }
 
             val image = bridgeRenderSession.image
